@@ -19,6 +19,18 @@ USER_UNIT_DIR="$HOME/.config/systemd/user"
 
 log() { logger -t fleet-gdrive-wizard "$*" 2>/dev/null || true; echo "[gdrive-wizard] $*"; }
 
+# Flags extras do bisync (dependem da versao do rclone instalada no PC).
+gdrive_bisync_extra_flags() {
+    local flags=(--max-delete 50)
+    if rclone bisync --help 2>&1 | grep -q 'conflict-resolve'; then
+        flags+=(--conflict-resolve newer)
+    fi
+    if rclone bisync --help 2>&1 | grep -q '\-\-resilient'; then
+        flags+=(--resilient)
+    fi
+    printf '%s\n' "${flags[@]}"
+}
+
 # --- Guardas de ambiente -----------------------------------------------------
 if [[ "$(id -u)" -eq 0 ]]; then
     log "recusado: nao rodar como root"
@@ -148,9 +160,10 @@ fi
 mkdir -p "$LOCAL_DIR"
 
 # Sincronizacao inicial (estabelece a linha de base do bisync).
+mapfile -t _bisync_flags < <(gdrive_bisync_extra_flags)
 (
     rclone bisync "$LOCAL_DIR" "${REMOTE_NAME}:" --resync \
-        --conflict-resolve newer --resilient --max-delete 50 \
+        "${_bisync_flags[@]}" \
         --log-level INFO
 ) >/tmp/fleet-gdrive-resync.log 2>&1 &
 resync_pid=$!
@@ -162,7 +175,13 @@ if [[ "$GUI" == "zenity" ]]; then
     ) | zenity --progress --pulsate --auto-close --no-cancel \
         --title="Google Drive" --text="Preparando sua pasta GoogleDrive..." --width=420 2>/dev/null || true
 fi
-wait "$resync_pid" 2>/dev/null || true
+resync_rc=0
+wait "$resync_pid" 2>/dev/null || resync_rc=$?
+if [[ "$resync_rc" -ne 0 ]]; then
+    error_msg "Nao foi possivel sincronizar seus arquivos do Google Drive.\n\nAvise o TI e tente novamente.\n\nDetalhe em /tmp/fleet-gdrive-resync.log"
+    log "falha no bisync inicial (rc=$resync_rc)"
+    exit 1
+fi
 
 # Garante a unidade systemd --user disponivel (system-wide ou na home).
 if [[ ! -f "/etc/systemd/user/$SERVICE" && ! -f "$USER_UNIT_DIR/$SERVICE" ]]; then

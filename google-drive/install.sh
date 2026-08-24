@@ -28,33 +28,43 @@ write_embedded_files() {
 #!/usr/bin/env bash
 # Loop de sincronizacao bidirecional do Google Drive (rclone bisync) por usuario.
 # Rodado pela unidade systemd --user pc-fleet-gdrive-bisync.service.
-#
-# rclone bisync e "one-shot": para manter o Drive sincronizado continuamente,
-# repetimos a passada a cada GDRIVE_INTERVAL segundos. A primeira passada usa
-# --resync somente se ainda nao existe estado anterior (o wizard normalmente ja
-# fez o --resync inicial).
 set -uo pipefail
 
 LOCAL="${GDRIVE_LOCAL:-$HOME/GoogleDrive}"
 REMOTE="${GDRIVE_REMOTE:-gdrive:}"
 INTERVAL="${GDRIVE_INTERVAL:-60}"
 STATE_DIR="${GDRIVE_STATE_DIR:-$HOME/.cache/rclone/bisync}"
+LOG_FILE="${GDRIVE_LOG:-$HOME/.cache/rclone/bisync-loop.log}"
 
-mkdir -p "$LOCAL"
+mkdir -p "$LOCAL" "$(dirname "$LOG_FILE")"
+
+gdrive_bisync_extra_flags() {
+    local flags=(--max-delete 50)
+    if rclone bisync --help 2>&1 | grep -q 'conflict-resolve'; then
+        flags+=(--conflict-resolve newer)
+    fi
+    if rclone bisync --help 2>&1 | grep -q '\-\-resilient'; then
+        flags+=(--resilient)
+    fi
+    printf '%s\n' "${flags[@]}"
+}
 
 first_flag=""
 if ! ls "$STATE_DIR"/*.lst >/dev/null 2>&1; then
-    # Sem estado anterior: primeira passada precisa estabelecer a linha de base.
     first_flag="--resync"
 fi
 
+mapfile -t _bisync_flags < <(gdrive_bisync_extra_flags)
+
 while true; do
-    # shellcheck disable=SC2086
-    rclone bisync "$LOCAL" "$REMOTE" $first_flag \
-        --conflict-resolve newer \
-        --resilient \
-        --max-delete 50 \
-        --log-level INFO 2>&1 | tail -n 200 || true
+    {
+        echo "=== $(date -Iseconds) bisync start (first=${first_flag:-no}) ==="
+        # shellcheck disable=SC2086
+        rclone bisync "$LOCAL" "$REMOTE" $first_flag \
+            "${_bisync_flags[@]}" \
+            --log-level INFO
+        echo "=== $(date -Iseconds) bisync end rc=$? ==="
+    } >>"$LOG_FILE" 2>&1 || true
     first_flag=""
     sleep "$INTERVAL"
 done
@@ -449,6 +459,18 @@ USER_UNIT_DIR="$HOME/.config/systemd/user"
 
 log() { logger -t fleet-gdrive-wizard "$*" 2>/dev/null || true; echo "[gdrive-wizard] $*"; }
 
+# Flags extras do bisync (dependem da versao do rclone instalada no PC).
+gdrive_bisync_extra_flags() {
+    local flags=(--max-delete 50)
+    if rclone bisync --help 2>&1 | grep -q 'conflict-resolve'; then
+        flags+=(--conflict-resolve newer)
+    fi
+    if rclone bisync --help 2>&1 | grep -q '\-\-resilient'; then
+        flags+=(--resilient)
+    fi
+    printf '%s\n' "${flags[@]}"
+}
+
 # --- Guardas de ambiente -----------------------------------------------------
 if [[ "$(id -u)" -eq 0 ]]; then
     log "recusado: nao rodar como root"
@@ -578,9 +600,10 @@ fi
 mkdir -p "$LOCAL_DIR"
 
 # Sincronizacao inicial (estabelece a linha de base do bisync).
+mapfile -t _bisync_flags < <(gdrive_bisync_extra_flags)
 (
     rclone bisync "$LOCAL_DIR" "${REMOTE_NAME}:" --resync \
-        --conflict-resolve newer --resilient --max-delete 50 \
+        "${_bisync_flags[@]}" \
         --log-level INFO
 ) >/tmp/fleet-gdrive-resync.log 2>&1 &
 resync_pid=$!
@@ -592,7 +615,13 @@ if [[ "$GUI" == "zenity" ]]; then
     ) | zenity --progress --pulsate --auto-close --no-cancel \
         --title="Google Drive" --text="Preparando sua pasta GoogleDrive..." --width=420 2>/dev/null || true
 fi
-wait "$resync_pid" 2>/dev/null || true
+resync_rc=0
+wait "$resync_pid" 2>/dev/null || resync_rc=$?
+if [[ "$resync_rc" -ne 0 ]]; then
+    error_msg "Nao foi possivel sincronizar seus arquivos do Google Drive.\n\nAvise o TI e tente novamente.\n\nDetalhe em /tmp/fleet-gdrive-resync.log"
+    log "falha no bisync inicial (rc=$resync_rc)"
+    exit 1
+fi
 
 # Garante a unidade systemd --user disponivel (system-wide ou na home).
 if [[ ! -f "/etc/systemd/user/$SERVICE" && ! -f "$USER_UNIT_DIR/$SERVICE" ]]; then
@@ -712,9 +741,13 @@ GDRIVE_EOF_pc-fleet-gdrive-wizard_desktop
 }
 
 export DEBIAN_FRONTEND=noninteractive
-# Evita falha quando algum repo de terceiros (ex.: cursor) esta quebrado no apt update.
 if ! gs_run_as_root apt-get install -y --no-install-recommends rclone fuse3 zenity; then
   gs_install_apt_packages rclone fuse3 zenity
+fi
+# rclone do apt (Mint/Ubuntu) costuma ser antigo e bisync sem flags novas; instala oficial se preciso.
+if ! rclone bisync --help 2>&1 | grep -q 'conflict-resolve'; then
+  echo "Atualizando rclone para versao recente (bisync completo)..." >&2
+  gs_curl https://rclone.org/install.sh | bash -s
 fi
 write_embedded_files
 systemctl daemon-reload 2>/dev/null || true

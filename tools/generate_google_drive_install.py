@@ -56,6 +56,11 @@ export DEBIAN_FRONTEND=noninteractive
 if ! gs_run_as_root apt-get install -y --no-install-recommends rclone fuse3 zenity; then
   gs_install_apt_packages rclone fuse3 zenity
 fi
+# rclone do apt (Mint/Ubuntu) costuma ser antigo e bisync sem flags novas; instala oficial se preciso.
+if ! rclone bisync --help 2>&1 | grep -q 'conflict-resolve'; then
+  echo "Atualizando rclone para versao recente (bisync completo)..." >&2
+  gs_curl https://rclone.org/install.sh | bash -s
+fi
 write_embedded_files
 systemctl daemon-reload 2>/dev/null || true
 echo "Google Drive (rclone) instalado para a frota"
