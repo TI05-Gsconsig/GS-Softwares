@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Conectar Google Drive
+Name[pt_BR]=Conectar Google Drive
+Comment=Assistente para conectar sua conta do Google Drive
+Comment[pt_BR]=Assistente para conectar sua conta do Google Drive
+Exec=fleet-gdrive-wizard
+Icon=folder-google-drive
+Terminal=false
+# Autostart apos a sessao grafica subir; o proprio wizard sai calado se ja configurado.
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=10
+NoDisplay=true

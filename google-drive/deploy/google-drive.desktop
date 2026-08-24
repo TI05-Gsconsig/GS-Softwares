@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Google Drive
+Name[pt_BR]=Google Drive
+Comment=Abrir a pasta sincronizada do Google Drive
+Comment[pt_BR]=Abrir a pasta sincronizada do Google Drive
+Exec=sh -c "xdg-open \\"$HOME/GoogleDrive\\""
+Icon=folder-google-drive
+Terminal=false
+Categories=Network;Utility;

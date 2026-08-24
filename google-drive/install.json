@@ -1,0 +1,29 @@
+{
+  "name": "Google Drive",
+  "slug": "google-drive",
+  "version": "rclone-bisync",
+  "developer": "Google / rclone",
+  "official_url": "https://rclone.org/drive/",
+  "install_method": "apt",
+  "dependencies": [
+    "rclone",
+    "fuse3",
+    "zenity"
+  ],
+  "apt_packages": "rclone fuse3 zenity",
+  "install_commands": [
+    "./google-drive/install.sh"
+  ],
+  "remove_commands": [
+    "apt purge -y rclone || true",
+    "rm -rf /usr/local/lib/pc-fleet/gdrive",
+    "rm -f /usr/local/bin/fleet-gdrive-wizard /usr/local/bin/fleet-gdrive-disconnect",
+    "rm -f /etc/xdg/autostart/pc-fleet-gdrive-wizard.desktop",
+    "rm -f /etc/systemd/user/pc-fleet-gdrive-bisync.service",
+    "systemctl daemon-reload 2>/dev/null || true"
+  ],
+  "update_commands": [
+    "./google-drive/install.sh"
+  ],
+  "download_urls": []
+}

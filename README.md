@@ -23,6 +23,7 @@ software-name/
 | `cursor/` | Cursor |
 | `whatsapp-web/` | WhatsApp Web |
 | `google-chrome/` | Google Chrome |
+| `google-drive/` | Google Drive (rclone bisync por usuario) |
 | `remmina/` | Remmina |
 | `ads-power/` | ADS Power |
 

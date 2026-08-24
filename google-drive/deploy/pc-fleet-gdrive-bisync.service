@@ -1,0 +1,17 @@
+[Unit]
+Description=Google Drive sync (Frota) via rclone bisync
+Documentation=https://github.com/TI05-Gsconsig/pc-fleet-dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Loop de bisync por usuario; para automaticamente ao deslogar (sem linger).
+ExecStart=/usr/local/lib/pc-fleet/gdrive/fleet-gdrive-bisync-loop.sh
+Restart=on-failure
+RestartSec=30
+# Evita rodar como root por engano (unidade e --user, mas reforcamos).
+Nice=5
+
+[Install]
+WantedBy=default.target

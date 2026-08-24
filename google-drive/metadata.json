@@ -1,0 +1,24 @@
+{
+  "id": "google-drive",
+  "slug": "google-drive",
+  "name": "Google Drive",
+  "version": "rclone-bisync",
+  "developer": "Google / rclone",
+  "official_url": "https://rclone.org/drive/",
+  "description": "Sincronizacao bidirecional do Google Drive por usuario Linux (pasta ~/GoogleDrive).",
+  "summary": "Drive pessoal sincronizado na pasta GoogleDrive, com assistente grafico no primeiro login.",
+  "purpose": "Substituir o cliente Windows do Drive em PCs Linux da frota, isolado por operador.",
+  "keywords": [
+    "google",
+    "drive",
+    "gdrive",
+    "rclone",
+    "sync",
+    "nuvem"
+  ],
+  "category": "corporate",
+  "platform": "linux-mint",
+  "install_method": "apt",
+  "icon": "downloads/icon.svg",
+  "catalog_source": "GS-Softwares"
+}

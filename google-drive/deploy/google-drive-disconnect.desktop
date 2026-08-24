@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Desconectar Google Drive
+Name[pt_BR]=Desconectar Google Drive
+Comment=Encerrar a sincronizacao e remover a conta do Google Drive deste login
+Comment[pt_BR]=Encerrar a sincronizacao e remover a conta do Google Drive deste login
+Exec=fleet-gdrive-disconnect
+Icon=folder-google-drive
+Terminal=false
+Categories=Network;Utility;
